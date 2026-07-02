@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ACL 2026 Paper Swipe</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>ACL 2026</h1>
+  <nav>
+    <button id="tab-swipe" class="tab active">Swipe</button>
+    <button id="tab-schedule" class="tab">Schedule (<span id="liked-count">0</span>)</button>
+  </nav>
+  <div id="progress">…</div>
+</header>
+<div id="layout">
+  <aside>
+    <h2>Negative keywords</h2>
+    <form id="kw-form">
+      <input id="kw-input" type="text" placeholder="add keyword, press Enter" autocomplete="off">
+    </form>
+    <ul id="kw-list"></ul>
+    <p class="hint" id="kw-hint"></p>
+    <div class="help">
+      <p>→ like &nbsp;·&nbsp; ← skip</p>
+      <p>space details &nbsp;·&nbsp; Z undo</p>
+    </div>
+  </aside>
+  <main>
+    <section id="swipe-view">
+      <div id="card-area"></div>
+      <div id="controls">
+        <button id="btn-skip" title="left arrow">✕ Skip</button>
+        <button id="btn-details" title="space">Details</button>
+        <button id="btn-like" title="right arrow">♥ Like</button>
+      </div>
+    </section>
+    <section id="schedule-view" hidden>
+      <div id="schedule-header">
+        <h2>Your schedule</h2>
+        <a id="btn-ics" href="/api/export.ics">Download .ics</a>
+      </div>
+      <div id="schedule"></div>
+    </section>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
