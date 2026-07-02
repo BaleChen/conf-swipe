@@ -777,15 +777,30 @@ let undoStack = [];
 let showDetails = false;
 let view = 'swipe';
 let animating = false;
+let loaded = false;
 
 const $ = id => document.getElementById(id);
 
 async function init() {
-  const [pRes, sRes] = await Promise.all([fetch('/api/papers'), fetch('/api/state')]);
-  papers = await pRes.json();
-  const state = await sRes.json();
-  keywords = state.keywords;
-  decisions = state.decisions;
+  try {
+    const [pRes, sRes] = await Promise.all([fetch('/api/papers'), fetch('/api/state')]);
+    if (!pRes.ok || !sRes.ok) throw new Error('bad response');
+    papers = await pRes.json();
+    const state = await sRes.json();
+    keywords = state.keywords;
+    decisions = state.decisions;
+    loaded = true;
+  } catch (err) {
+    const card = document.createElement('div');
+    card.className = 'card done';
+    const h = document.createElement('h2');
+    h.textContent = 'Could not load papers';
+    const msg = document.createElement('p');
+    msg.textContent = 'Check that papers.json exists (run: python3 prepare_data.py) and that the server is running, then reload.';
+    card.append(h, msg);
+    $('card-area').replaceChildren(card);
+    return;
+  }
   rebuildQueue();
   renderKeywords();
   renderCard();
@@ -793,6 +808,7 @@ async function init() {
 }
 
 function saveState() {
+  if (!loaded) return;
   fetch('/api/state', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -818,6 +834,7 @@ function matchesAny(title, kws) {
 }
 
 function addKeyword(raw) {
+  if (!loaded) return;
   const kw = raw.trim().toLowerCase();
   if (!kw || keywords.includes(kw)) return;
   keywords.push(kw);
@@ -828,7 +845,7 @@ function addKeyword(raw) {
       n++;
     }
   }
-  $('kw-hint').textContent = `“${kw}” filtered out ${n} papers`;
+  $('kw-hint').textContent = `”${kw}” filtered out ${n} papers`;
   afterMutation();
 }
 
@@ -859,7 +876,7 @@ function decide(action) {  // 'like' | 'skip'
   if (!p || animating) return;
   animating = true;
   decisions[p.id] = action;
-  undoStack.push(p.id);
+  undoStack.push({id: p.id});
   const card = document.getElementById('card');
   if (card) card.classList.add(action === 'like' ? 'out-right' : 'out-left');
   setTimeout(() => {
@@ -873,9 +890,10 @@ function decide(action) {  // 'like' | 'skip'
 
 function undo() {
   if (animating) return;
-  const id = undoStack.pop();
-  if (!id) return;
-  delete decisions[id];
+  const last = undoStack.pop();
+  if (!last) return;
+  if (last.prev === undefined) delete decisions[last.id];
+  else decisions[last.id] = last.prev;
   afterMutation();
 }
 
@@ -991,8 +1009,8 @@ function renderSchedule() {
       btn.textContent = '✕';
       btn.title = 'remove from schedule';
       btn.onclick = () => {
+        undoStack.push({id: p.id, prev: 'like'});
         decisions[p.id] = 'skip';
-        undoStack.push(p.id);
         saveState();
         renderSchedule();
         renderProgress();
@@ -1017,13 +1035,12 @@ function showView(v) {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT') return;
-  if (e.key === ' ') e.preventDefault();
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
   if (e.key === 'z' || e.key === 'Z') { undo(); return; }
   if (view !== 'swipe') return;
   if (e.key === 'ArrowRight') decide('like');
   else if (e.key === 'ArrowLeft') decide('skip');
-  else if (e.key === ' ') toggleDetails();
+  else if (e.key === ' ') { e.preventDefault(); toggleDetails(); }
 });
 
 $('kw-form').addEventListener('submit', e => {
@@ -1098,6 +1115,8 @@ No dependencies beyond Python 3 stdlib.
   brings them back.
 - The **Schedule** tab groups liked papers by session; **Download .ics** exports
   one calendar event per session (times in America/Los_Angeles).
+- Use one browser tab at a time — the app saves the full state after every
+  action, so a stale second tab can overwrite a fresh one.
 
 Progress is saved to `state.json` after every action — quit and resume anytime.
 

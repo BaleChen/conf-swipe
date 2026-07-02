@@ -20,6 +20,8 @@ No dependencies beyond Python 3 stdlib.
   brings them back.
 - The **Schedule** tab groups liked papers by session; **Download .ics** exports
   one calendar event per session (times in America/Los_Angeles).
+- Use one browser tab at a time — the app saves the full state after every
+  action, so a stale second tab can overwrite a fresh one.
 
 Progress is saved to `state.json` after every action — quit and resume anytime.
 
