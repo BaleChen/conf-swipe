@@ -797,6 +797,10 @@ function saveState() {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({keywords, decisions}),
+  }).then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  }).catch(() => {
+    $('kw-hint').textContent = '⚠ Could not save progress — is the server running?';
   });
 }
 
@@ -868,6 +872,7 @@ function decide(action) {  // 'like' | 'skip'
 }
 
 function undo() {
+  if (animating) return;
   const id = undoStack.pop();
   if (!id) return;
   delete decisions[id];
@@ -884,8 +889,14 @@ function renderCard() {
   const p = queue[0];
   if (!p) {
     const liked = papers.filter(x => decisions[x.id] === 'like').length;
-    area.innerHTML = `<div class="card done"><h2>All done 🎉</h2>
-      <p>You liked ${liked} papers. Check the Schedule tab.</p></div>`;
+    const done = document.createElement('div');
+    done.className = 'card done';
+    const h = document.createElement('h2');
+    h.textContent = 'All done 🎉';
+    const msg = document.createElement('p');
+    msg.textContent = `You liked ${liked} papers. Check the Schedule tab.`;
+    done.append(h, msg);
+    area.replaceChildren(done);
     return;
   }
   const card = document.createElement('div');
@@ -954,7 +965,7 @@ function renderSchedule() {
   const groups = new Map();
   for (const p of liked) {
     const name = p.sessionName || p.session || 'Unknown session';
-    const key = `${p.start || '9999'}|${p.time}|${name}`;
+    const key = `${p.start || '9999-' + p.date}|${p.time}|${name}`;
     if (!groups.has(key)) groups.set(key, {p0: p, name, papers: []});
     groups.get(key).papers.push(p);
   }
@@ -1006,11 +1017,12 @@ function showView(v) {
 
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
+  if (e.key === ' ') e.preventDefault();
   if (e.key === 'z' || e.key === 'Z') { undo(); return; }
   if (view !== 'swipe') return;
   if (e.key === 'ArrowRight') decide('like');
   else if (e.key === 'ArrowLeft') decide('skip');
-  else if (e.key === ' ') { e.preventDefault(); toggleDetails(); }
+  else if (e.key === ' ') toggleDetails();
 });
 
 $('kw-form').addEventListener('submit', e => {
