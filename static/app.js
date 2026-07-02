@@ -281,9 +281,10 @@ $('kw-form').addEventListener('submit', e => {
   addKeyword($('kw-input').value);
   $('kw-input').value = '';
 });
-$('btn-like').onclick = () => decide('like');
-$('btn-skip').onclick = () => decide('skip');
-$('btn-details').onclick = toggleDetails;
+$('btn-like').onclick = e => { decide('like'); e.currentTarget.blur(); };
+$('btn-skip').onclick = e => { decide('skip'); e.currentTarget.blur(); };
+$('btn-undo').onclick = e => { undo(); e.currentTarget.blur(); };
+$('btn-details').onclick = e => { toggleDetails(); e.currentTarget.blur(); };
 $('tab-swipe').onclick = () => showView('swipe');
 $('tab-schedule').onclick = () => showView('schedule');
 
