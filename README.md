@@ -18,7 +18,10 @@ No dependencies beyond Python 3 stdlib.
 - Add negative keywords in the sidebar (case-insensitive, whole-word, matched
   against titles). Matching unseen papers are auto-skipped; deleting a keyword
   brings them back. End a keyword with `*` for a prefix match: `biolog*`
-  catches "biology", "biological", "biologist", …
+  catches "biology", "biological", "biologist", … Wrap a keyword in slashes
+  for a raw case-insensitive regex: `/multi-?lingual/`, `/speech|audio/`
+  (matches anywhere in the title — add `\b` yourself if you need word
+  boundaries).
 - The **Schedule** tab groups liked papers by session; **Download .ics** exports
   one calendar event per session (times in America/Los_Angeles).
 - Use one browser tab at a time — the app saves the full state after every

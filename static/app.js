@@ -108,24 +108,37 @@ function renderSessions() {
 }
 
 function keywordRegex(kw) {
+  // "/pattern/" is a raw case-insensitive regex; returns null if it doesn't compile
+  if (kw.length > 2 && kw.startsWith('/') && kw.endsWith('/')) {
+    try { return new RegExp(kw.slice(1, -1), 'i'); } catch { return null; }
+  }
   const prefix = kw.endsWith('*');  // "biolog*" matches biology, biological, ...
   const base = prefix ? kw.slice(0, -1) : kw;
   const esc = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`(^|[^A-Za-z0-9])${esc}` + (prefix ? '' : '([^A-Za-z0-9]|$)'), 'i');
 }
 
+function isRegexKeyword(kw) {
+  return kw.length > 2 && kw.startsWith('/') && kw.endsWith('/');
+}
+
 function matchesAny(title, kws) {
-  return kws.some(kw => keywordRegex(kw).test(title));
+  return kws.some(kw => keywordRegex(kw)?.test(title));
 }
 
 function addKeyword(raw) {
   if (!loaded) return;
-  const kw = raw.trim().toLowerCase();
+  let kw = raw.trim();
+  if (!isRegexKeyword(kw)) kw = kw.toLowerCase();  // regex patterns keep case (\W vs \w)
   if (!kw.replace(/\*/g, '') || keywords.includes(kw)) return;
+  if (isRegexKeyword(kw) && keywordRegex(kw) === null) {
+    $('kw-hint').textContent = `⚠ invalid regex: ${kw}`;
+    return;
+  }
   keywords.push(kw);
   let n = 0;
   for (const p of papers) {
-    if (!(p.id in decisions) && keywordRegex(kw).test(p.title)) {
+    if (!(p.id in decisions) && keywordRegex(kw)?.test(p.title)) {
       decisions[p.id] = 'filtered';
       n++;
     }
