@@ -56,8 +56,10 @@ function rebuildQueue() {
 }
 
 function keywordRegex(kw) {
-  const esc = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`(^|[^A-Za-z0-9])${esc}([^A-Za-z0-9]|$)`, 'i');
+  const prefix = kw.endsWith('*');  // "biolog*" matches biology, biological, ...
+  const base = prefix ? kw.slice(0, -1) : kw;
+  const esc = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^A-Za-z0-9])${esc}` + (prefix ? '' : '([^A-Za-z0-9]|$)'), 'i');
 }
 
 function matchesAny(title, kws) {
@@ -67,7 +69,7 @@ function matchesAny(title, kws) {
 function addKeyword(raw) {
   if (!loaded) return;
   const kw = raw.trim().toLowerCase();
-  if (!kw || keywords.includes(kw)) return;
+  if (!kw.replace(/\*/g, '') || keywords.includes(kw)) return;
   keywords.push(kw);
   let n = 0;
   for (const p of papers) {
