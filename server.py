@@ -3,7 +3,10 @@ import json
 import os
 import re
 import shutil
+import sys
+import webbrowser
 from datetime import datetime, timezone
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
@@ -112,3 +115,72 @@ def build_ics(papers, decisions):
     for line in lines:
         out.extend(fold(line))
     return '\r\n'.join(out) + '\r\n'
+
+
+class Handler(SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=STATIC_DIR, **kwargs)
+
+    def send_json(self, obj, status=200):
+        body = json.dumps(obj, ensure_ascii=False).encode('utf-8')
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        if self.path == '/api/papers':
+            with open(PAPERS_PATH, encoding='utf-8') as f:
+                self.send_json(json.load(f))
+        elif self.path == '/api/state':
+            self.send_json(load_state(STATE_PATH))
+        elif self.path == '/api/export.ics':
+            with open(PAPERS_PATH, encoding='utf-8') as f:
+                papers = json.load(f)
+            body = build_ics(papers, load_state(STATE_PATH)['decisions']).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/calendar; charset=utf-8')
+            self.send_header('Content-Disposition', 'attachment; filename="acl2026-schedule.ics"')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            super().do_GET()
+
+    def do_POST(self):
+        if self.path != '/api/state':
+            self.send_error(404)
+            return
+        length = int(self.headers.get('Content-Length', 0))
+        try:
+            data = json.loads(self.rfile.read(length))
+            if not isinstance(data, dict) or not isinstance(data.get('keywords'), list) \
+                    or not isinstance(data.get('decisions'), dict):
+                raise ValueError('unexpected state shape')
+        except ValueError:
+            self.send_json({'error': 'invalid state'}, status=400)
+            return
+        save_state(STATE_PATH, {'keywords': data['keywords'], 'decisions': data['decisions']})
+        self.send_json({'ok': True})
+
+    def log_message(self, fmt, *args):
+        pass  # keep the terminal quiet while swiping
+
+
+def main():
+    if not os.path.exists(PAPERS_PATH):
+        raise SystemExit('papers.json not found — run: python3 prepare_data.py')
+    server = ThreadingHTTPServer(('127.0.0.1', PORT), Handler)
+    url = f'http://localhost:{PORT}/'
+    print(f'Serving on {url}  (Ctrl-C to stop)')
+    if '--no-browser' not in sys.argv:
+        webbrowser.open(url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == '__main__':
+    main()
