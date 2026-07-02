@@ -40,6 +40,11 @@ class BuildIcsTest(unittest.TestCase):
         for line in ics.split('\r\n'):
             self.assertLessEqual(len(line.encode('utf-8')), 75)
 
+    def test_folds_multibyte_lines_to_75_octets(self):
+        ics = build_ics([paper(title='语言模型' * 50)], {'1-ACL': 'like'})
+        for line in ics.split('\r\n'):
+            self.assertLessEqual(len(line.encode('utf-8')), 75)
+
 
 class StateTest(unittest.TestCase):
     def test_missing_file_gives_empty_state(self):

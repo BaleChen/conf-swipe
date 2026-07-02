@@ -314,6 +314,11 @@ class BuildIcsTest(unittest.TestCase):
         for line in ics.split('\r\n'):
             self.assertLessEqual(len(line.encode('utf-8')), 75)
 
+    def test_folds_multibyte_lines_to_75_octets(self):
+        ics = build_ics([paper(title='语言模型' * 50)], {'1-ACL': 'like'})
+        for line in ics.split('\r\n'):
+            self.assertLessEqual(len(line.encode('utf-8')), 75)
+
 
 class StateTest(unittest.TestCase):
     def test_missing_file_gives_empty_state(self):
@@ -418,8 +423,11 @@ def fold(line):
     """Split a content line per RFC 5545 (continuation lines begin with a space)."""
     parts = []
     while len(line.encode('utf-8')) > 74:
-        parts.append(line[:70])
-        line = ' ' + line[70:]
+        cut = 70
+        while len(line[:cut].encode('utf-8')) > 70:
+            cut -= 1
+        parts.append(line[:cut])
+        line = ' ' + line[cut:]
     parts.append(line)
     return parts
 
@@ -465,7 +473,7 @@ def build_ics(papers, decisions):
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `python3 -m unittest tests.test_server -v`
-Expected: `OK` (7 tests)
+Expected: `OK` (8 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -1067,7 +1075,7 @@ python3 -m unittest discover -s tests -t . -v
 - [ ] **Step 2: Full test suite**
 
 Run: `python3 -m unittest discover -s tests -t . -v`
-Expected: `OK` (13 tests)
+Expected: `OK` (14 tests)
 
 - [ ] **Step 3: End-to-end sanity pass**
 

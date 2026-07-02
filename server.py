@@ -67,8 +67,11 @@ def fold(line):
     """Split a content line per RFC 5545 (continuation lines begin with a space)."""
     parts = []
     while len(line.encode('utf-8')) > 74:
-        parts.append(line[:70])
-        line = ' ' + line[70:]
+        cut = 70
+        while len(line[:cut].encode('utf-8')) > 70:
+            cut -= 1
+        parts.append(line[:cut])
+        line = ' ' + line[cut:]
     parts.append(line)
     return parts
 
