@@ -201,7 +201,8 @@ function renderSchedule() {
     groups.get(key).papers.push(p);
   }
   const sorted = [...groups.values()].sort((a, b) =>
-    `${a.p0.start || '9999'}|${a.p0.time}`.localeCompare(`${b.p0.start || '9999'}|${b.p0.time}`));
+    `${a.p0.start || '9999-' + a.p0.date}|${a.p0.time}`.localeCompare(
+      `${b.p0.start || '9999-' + b.p0.date}|${b.p0.time}`));
   for (const g of sorted) {
     const sec = document.createElement('section');
     sec.className = 'session';
