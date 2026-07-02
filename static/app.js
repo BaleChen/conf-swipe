@@ -240,6 +240,7 @@ function renderProgress() {
 
 function renderKeywords() {
   const ul = $('kw-list');
+  $('kw-count').textContent = keywords.length;
   ul.replaceChildren();
   for (const kw of keywords) {
     const li = document.createElement('li');
