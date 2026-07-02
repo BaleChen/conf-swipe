@@ -39,7 +39,7 @@ _SAVE_LOCK = threading.Lock()
 
 
 def empty_state():
-    return {'keywords': [], 'decisions': {}}
+    return {'keywords': [], 'decisions': {}, 'excludedSessions': []}
 
 
 def load_state(path):
@@ -49,9 +49,11 @@ def load_state(path):
     try:
         with open(path, encoding='utf-8') as f:
             data = json.load(f)
-        if not isinstance(data.get('keywords'), list) or not isinstance(data.get('decisions'), dict):
+        if not isinstance(data.get('keywords'), list) or not isinstance(data.get('decisions'), dict) \
+                or not isinstance(data.get('excludedSessions', []), list):
             raise ValueError('unexpected state shape')
-        return {'keywords': data['keywords'], 'decisions': data['decisions']}
+        return {'keywords': data['keywords'], 'decisions': data['decisions'],
+                'excludedSessions': data.get('excludedSessions', [])}
     except (ValueError, OSError):
         shutil.copyfile(path, path + '.bak')
         return empty_state()
@@ -160,12 +162,14 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             data = json.loads(self.rfile.read(length))
             if not isinstance(data, dict) or not isinstance(data.get('keywords'), list) \
-                    or not isinstance(data.get('decisions'), dict):
+                    or not isinstance(data.get('decisions'), dict) \
+                    or not isinstance(data.get('excludedSessions', []), list):
                 raise ValueError('unexpected state shape')
         except ValueError:
             self.send_json({'error': 'invalid state'}, status=400)
             return
-        save_state(STATE_PATH, {'keywords': data['keywords'], 'decisions': data['decisions']})
+        save_state(STATE_PATH, {'keywords': data['keywords'], 'decisions': data['decisions'],
+                                'excludedSessions': data.get('excludedSessions', [])})
         self.send_json({'ok': True})
 
     def log_message(self, fmt, *args):

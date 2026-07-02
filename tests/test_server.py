@@ -51,27 +51,38 @@ class StateTest(unittest.TestCase):
     def test_missing_file_gives_empty_state(self):
         with tempfile.TemporaryDirectory() as d:
             self.assertEqual(load_state(os.path.join(d, 'state.json')),
-                             {'keywords': [], 'decisions': {}})
+                             {'keywords': [], 'decisions': {}, 'excludedSessions': []})
 
     def test_round_trip(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, 'state.json')
-            state = {'keywords': ['agent'], 'decisions': {'1-ACL': 'like'}}
+            state = {'keywords': ['agent'], 'decisions': {'1-ACL': 'like'},
+                     'excludedSessions': ['Machine Translation']}
             save_state(path, state)
             self.assertEqual(load_state(path), state)
+
+    def test_state_without_excluded_sessions_defaults_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, 'state.json')
+            save_state(path, {'keywords': [], 'decisions': {'1-ACL': 'like'}})
+            loaded = load_state(path)
+            self.assertEqual(loaded['excludedSessions'], [])
+            self.assertEqual(loaded['decisions'], {'1-ACL': 'like'})
 
     def test_corrupt_file_is_backed_up_not_overwritten(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, 'state.json')
             with open(path, 'w') as f:
                 f.write('{not json')
-            self.assertEqual(load_state(path), {'keywords': [], 'decisions': {}})
+            self.assertEqual(load_state(path),
+                             {'keywords': [], 'decisions': {}, 'excludedSessions': []})
             self.assertTrue(os.path.exists(path + '.bak'))
 
     def test_concurrent_saves_never_corrupt_state(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, 'state.json')
-            states = [{'keywords': [], 'decisions': {str(i): 'like'}} for i in range(2)]
+            states = [{'keywords': [], 'decisions': {str(i): 'like'},
+                       'excludedSessions': []} for i in range(2)]
 
             def hammer(state):
                 for _ in range(50):

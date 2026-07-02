@@ -13,6 +13,15 @@ header h1 { font-size: 18px; margin: 0; }
 aside { width: 250px; flex-shrink: 0; padding: 20px; border-right: 1px solid #e2e2de; }
 aside h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em;
            color: #888; margin: 0 0 10px; }
+#sessions-panel { margin: 0 0 18px; }
+#sessions-panel summary { font-size: 13px; text-transform: uppercase; letter-spacing: .05em;
+                          color: #888; cursor: pointer; }
+#session-list { max-height: 280px; overflow-y: auto; margin-top: 8px;
+                border-bottom: 1px solid #e2e2de; padding-bottom: 8px; }
+#session-list label { display: flex; gap: 7px; align-items: baseline;
+                      padding: 3px 0; font-size: 13px; cursor: pointer; }
+#session-list .count { color: #aaa; margin-left: auto; font-size: 12px; }
+#session-list .slot { color: #aaa; font-size: 11px; }
 #kw-input { width: 100%; padding: 8px 10px; border: 1px solid #d5d5d0;
             border-radius: 6px; font-size: 14px; }
 #kw-list { list-style: none; padding: 0; margin: 12px 0; }

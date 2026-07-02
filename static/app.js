@@ -3,6 +3,7 @@
 let papers = [];
 let keywords = [];
 let decisions = {};
+let excludedSessions = new Set();
 let queue = [];
 let undoStack = [];
 let showDetails = false;
@@ -20,6 +21,7 @@ async function init() {
     const state = await sRes.json();
     keywords = state.keywords;
     decisions = state.decisions;
+    excludedSessions = new Set(state.excludedSessions || []);
     loaded = true;
   } catch (err) {
     const card = document.createElement('div');
@@ -33,6 +35,7 @@ async function init() {
     return;
   }
   rebuildQueue();
+  renderSessions();
   renderKeywords();
   renderCard();
   renderProgress();
@@ -43,7 +46,7 @@ function saveState() {
   fetch('/api/state', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({keywords, decisions}),
+    body: JSON.stringify({keywords, decisions, excludedSessions: [...excludedSessions]}),
   }).then(r => {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
   }).catch(() => {
@@ -52,7 +55,56 @@ function saveState() {
 }
 
 function rebuildQueue() {
-  queue = papers.filter(p => !(p.id in decisions));
+  queue = papers.filter(p => !(p.id in decisions) && !excludedSessions.has(sessionTheme(p)));
+}
+
+function sessionTheme(p) {
+  // "Oral Session B: Resources and Evaluation 2" -> "Resources and Evaluation"
+  // "Poster Session C" stays as-is (posters have no theme; each letter is one slot)
+  const n = p.sessionName || p.session || 'Unknown session';
+  const m = n.match(/^Orals?\s+Session\s+\w+:\s*(.+?)\s*\d*$/i);
+  return m ? m[1] : (n.replace(/\s*\d+$/, '') || 'Unknown session');
+}
+
+function renderSessions() {
+  const list = $('session-list');
+  const groups = new Map();  // theme -> {count, slots: Set("date · time")}
+  for (const p of papers) {
+    const theme = sessionTheme(p);
+    if (!groups.has(theme)) groups.set(theme, {count: 0, slots: new Set()});
+    const g = groups.get(theme);
+    g.count++;
+    g.slots.add(`${p.date} ${p.time}`);
+  }
+  const posters = [...groups.keys()].filter(t => /^poster/i.test(t)).sort();
+  const others = [...groups.keys()].filter(t => !/^poster/i.test(t)).sort();
+  list.replaceChildren();
+  for (const theme of [...posters, ...others]) {
+    const g = groups.get(theme);
+    const label = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !excludedSessions.has(theme);
+    cb.onchange = e => {
+      if (e.target.checked) excludedSessions.delete(theme);
+      else excludedSessions.add(theme);
+      e.target.blur();
+      afterMutation();
+    };
+    const span = document.createElement('span');
+    span.textContent = theme;
+    if (g.slots.size === 1) {
+      const slot = document.createElement('span');
+      slot.className = 'slot';
+      slot.textContent = ` ${[...g.slots][0]}`;
+      span.append(slot);
+    }
+    const count = document.createElement('span');
+    count.className = 'count';
+    count.textContent = g.count;
+    label.append(cb, span, count);
+    list.append(label);
+  }
 }
 
 function keywordRegex(kw) {
@@ -178,7 +230,7 @@ function renderProgress() {
   for (const p of papers) {
     const d = decisions[p.id];
     if (d === 'like') liked++;
-    if (d === 'filtered') continue;
+    if (d === 'filtered' || excludedSessions.has(sessionTheme(p))) continue;
     total++;
     if (d === 'like' || d === 'skip') done++;
   }
