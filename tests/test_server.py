@@ -1,5 +1,6 @@
 import os
 import tempfile
+import threading
 import unittest
 
 from server import build_ics, load_state, save_state
@@ -66,6 +67,24 @@ class StateTest(unittest.TestCase):
                 f.write('{not json')
             self.assertEqual(load_state(path), {'keywords': [], 'decisions': {}})
             self.assertTrue(os.path.exists(path + '.bak'))
+
+    def test_concurrent_saves_never_corrupt_state(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, 'state.json')
+            states = [{'keywords': [], 'decisions': {str(i): 'like'}} for i in range(2)]
+
+            def hammer(state):
+                for _ in range(50):
+                    save_state(path, state)
+
+            threads = [threading.Thread(target=hammer, args=(s,)) for s in states]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            final = load_state(path)
+            self.assertIn(final, states)
+            self.assertFalse(os.path.exists(path + '.bak'))
 
 
 if __name__ == '__main__':

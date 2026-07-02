@@ -274,6 +274,7 @@ Create `tests/test_server.py`:
 ```python
 import os
 import tempfile
+import threading
 import unittest
 
 from server import build_ics, load_state, save_state
@@ -341,6 +342,24 @@ class StateTest(unittest.TestCase):
             self.assertEqual(load_state(path), {'keywords': [], 'decisions': {}})
             self.assertTrue(os.path.exists(path + '.bak'))
 
+    def test_concurrent_saves_never_corrupt_state(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, 'state.json')
+            states = [{'keywords': [], 'decisions': {str(i): 'like'}} for i in range(2)]
+
+            def hammer(state):
+                for _ in range(50):
+                    save_state(path, state)
+
+            threads = [threading.Thread(target=hammer, args=(s,)) for s in states]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            final = load_state(path)
+            self.assertIn(final, states)
+            self.assertFalse(os.path.exists(path + '.bak'))
+
 
 if __name__ == '__main__':
     unittest.main()
@@ -359,6 +378,7 @@ import json
 import os
 import re
 import shutil
+import threading
 from datetime import datetime, timezone
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -387,6 +407,8 @@ VTIMEZONE_LINES = [
     'END:VTIMEZONE',
 ]
 
+_SAVE_LOCK = threading.Lock()
+
 
 def empty_state():
     return {'keywords': [], 'decisions': {}}
@@ -409,9 +431,10 @@ def load_state(path):
 
 def save_state(path, state):
     tmp = path + '.tmp'
-    with open(tmp, 'w', encoding='utf-8') as f:
-        json.dump(state, f, ensure_ascii=False, indent=1)
-    os.replace(tmp, path)
+    with _SAVE_LOCK:
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(state, f, ensure_ascii=False, indent=1)
+        os.replace(tmp, path)
 
 
 def ics_escape(text):
@@ -473,7 +496,7 @@ def build_ics(papers, decisions):
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `python3 -m unittest tests.test_server -v`
-Expected: `OK` (8 tests)
+Expected: `OK` (9 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -1075,7 +1098,7 @@ python3 -m unittest discover -s tests -t . -v
 - [ ] **Step 2: Full test suite**
 
 Run: `python3 -m unittest discover -s tests -t . -v`
-Expected: `OK` (14 tests)
+Expected: `OK` (15 tests)
 
 - [ ] **Step 3: End-to-end sanity pass**
 

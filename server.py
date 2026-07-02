@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import sys
+import threading
 import webbrowser
 from datetime import datetime, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -34,6 +35,8 @@ VTIMEZONE_LINES = [
     'END:VTIMEZONE',
 ]
 
+_SAVE_LOCK = threading.Lock()
+
 
 def empty_state():
     return {'keywords': [], 'decisions': {}}
@@ -56,9 +59,10 @@ def load_state(path):
 
 def save_state(path, state):
     tmp = path + '.tmp'
-    with open(tmp, 'w', encoding='utf-8') as f:
-        json.dump(state, f, ensure_ascii=False, indent=1)
-    os.replace(tmp, path)
+    with _SAVE_LOCK:
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(state, f, ensure_ascii=False, indent=1)
+        os.replace(tmp, path)
 
 
 def ics_escape(text):
